@@ -1,103 +1,51 @@
 "use client";
 
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  Bars3Icon,
-  BellIcon,
-  BuildingOffice2Icon,
-  CalculatorIcon,
-  ChevronDownIcon,
-  ClipboardDocumentCheckIcon,
-  HeartIcon,
-  HomeIcon,
-  MagnifyingGlassIcon,
-  MapIcon,
-  MapPinIcon,
-  PlusIcon,
-  SparklesIcon,
-} from "@heroicons/react/24/outline";
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { analyzeProperty, formatEok, formatMan, formatPercent, formatPyeong } from "../lib/engine";
+import { properties as seedProperties, rawProperties } from "../lib/mock-data";
+import type { Analysis, Property, PropertyType } from "../lib/types";
 
-type Property = {
-  id: number; address: string; type: string; price: number; value: number; discount: number;
-  land: number; floor: number; rent: number; noi: number; equity: number; score: number;
-  grade: string; tag: string; added: string; bars: number[];
-};
+const menus = ["대시보드","매물검색","지도검색","저평가 TOP","관심매물","매물등록","대출계산기","설정"];
+const icons = ["▦","⌕","⌖","◆","♡","＋","₩","⚙"];
 
-const properties: Property[] = [
-  { id: 1, address: "대전 유성구 봉명동", type: "근린생활시설", price: 7.2, value: 9.05, discount: 20.4, land: 74, floor: 132, rent: 480, noi: 6.4, equity: 1.45, score: 84, grade: "A", tag: "가격하락", added: "오늘", bars: [38, 53, 46, 68, 61, 84] },
-  { id: 2, address: "세종 나성동", type: "상가주택", price: 11.8, value: 14.7, discount: 19.7, land: 93, floor: 188, rent: 720, noi: 6.1, equity: 2.08, score: 88, grade: "A", tag: "TOP 저평가", added: "오늘", bars: [43, 56, 51, 67, 72, 88] },
-  { id: 3, address: "대전 중구 대흥동", type: "꼬마빌딩", price: 6.4, value: 7.72, discount: 17.1, land: 61, floor: 106, rent: 435, noi: 6.8, equity: 1.12, score: 81, grade: "A", tag: "고수익", added: "1일 전", bars: [32, 45, 52, 59, 70, 81] },
-];
-
-const kpis = [
-  { label: "오늘 신규매물", value: "37", unit: "건", note: "어제보다 12건 증가", tone: "blue", icon: SparklesIcon },
-  { label: "저평가 후보", value: "8", unit: "건", note: "할인율 15% 이상", tone: "green", icon: CalculatorIcon },
-  { label: "가격하락", value: "4", unit: "건", note: "평균 6.8% 하락", tone: "orange", icon: ArrowDownIcon },
-  { label: "Score 80 이상", value: "3", unit: "건", note: "우선 검토 대상", tone: "purple", icon: ClipboardDocumentCheckIcon },
-  { label: "관심매물", value: "12", unit: "건", note: "2건 상태 변경", tone: "red", icon: HeartIcon },
-];
-
-const nav = [
-  ["대시보드", HomeIcon], ["매물 검색", MagnifyingGlassIcon], ["지도 탐색", MapIcon],
-  ["관심 매물", HeartIcon], ["투자 분석", CalculatorIcon], ["임장 관리", ClipboardDocumentCheckIcon],
-] as const;
-
-export default function Dashboard() {
-  const [activeNav, setActiveNav] = useState("대시보드");
-  const [activeFilter, setActiveFilter] = useState("전체");
-  const [favorites, setFavorites] = useState<number[]>([2]);
-  const [query, setQuery] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const shown = useMemo(() => properties.filter((p) =>
-    (activeFilter === "전체" || p.tag === activeFilter) && p.address.includes(query)
-  ), [activeFilter, query]);
-
-  return (
-    <div className="app-shell">
-      <aside className={menuOpen ? "sidebar open" : "sidebar"}>
-        <div className="brand"><div className="brand-mark"><BuildingOffice2Icon /></div><div><strong>RealFinder</strong><span>투자의 기준을 찾다</span></div></div>
-        <nav className="nav-list">
-          <p>MENU</p>
-          {nav.map(([label, Icon]) => <button key={label} className={activeNav === label ? "active" : ""} onClick={() => { setActiveNav(label); setMenuOpen(false); }}><Icon /><span>{label}</span>{label === "관심 매물" && <b>12</b>}</button>)}
-        </nav>
-        <div className="side-tip"><SparklesIcon /><strong>새 매물을 등록해보세요</strong><p>핵심 투자 지표를<br />자동으로 계산해 드려요.</p><button><PlusIcon /> 매물 직접 등록</button></div>
-        <div className="profile"><div className="avatar">김</div><div><strong>김투자</strong><span>개인 투자자</span></div><ChevronDownIcon /></div>
-      </aside>
-
-      <main>
-        <header>
-          <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}><Bars3Icon /></button>
-          <div className="search"><MagnifyingGlassIcon /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="지역, 주소로 매물을 검색하세요" /><kbd>⌘ K</kbd></div>
-          <div className="header-actions"><button className="notification"><BellIcon /><i /></button><span /><button className="register"><PlusIcon /> 매물 등록</button></div>
-        </header>
-
-        <div className="content">
-          <section className="welcome"><div><p>2026년 9월 12일 토요일</p><h1>좋은 아침이에요, 김투자님 <span>👋</span></h1><h2>오늘도 데이터로 좋은 기회를 찾아보세요.</h2></div><div className="region"><MapPinIcon /><div><span>관심 지역</span><strong>대전 · 세종</strong></div><ChevronDownIcon /></div></section>
-
-          <section className="kpi-grid">
-            {kpis.map(({ label, value, unit, note, tone, icon: Icon }) => <article className="kpi" key={label}><div className={`kpi-icon ${tone}`}><Icon /></div><div><p>{label}</p><strong>{value}<small>{unit}</small></strong><span className={tone === "orange" ? "orange-text" : ""}>{note}</span></div></article>)}
-          </section>
-
-          <section className="section-head"><div><h2>오늘의 추천 매물</h2><p>투자점수와 저평가 가능성을 종합해 선별했어요.</p></div><button>전체 매물 보기 <ArrowRightIcon /></button></section>
-          <div className="filters">{["전체", "TOP 저평가", "가격하락", "고수익"].map((f) => <button key={f} onClick={() => setActiveFilter(f)} className={activeFilter === f ? "active" : ""}>{f}</button>)}</div>
-
-          <section className="property-grid">
-            {shown.map((p) => <article className="property-card" key={p.id}>
-              <div className="card-top"><div><div className="badges"><span className="location">{p.address.split(" ").slice(0,2).join(" ")}</span><span className={`tag tag-${p.id}`}>{p.tag}</span></div><h3>{p.address.split(" ").slice(2).join(" ")} <small>{p.type}</small></h3><p><MapPinIcon /> {p.address} 120-8 · {p.added} 등록</p></div><button className={favorites.includes(p.id) ? "heart liked" : "heart"} onClick={() => setFavorites((v) => v.includes(p.id) ? v.filter(x => x !== p.id) : [...v, p.id])}><HeartIcon /></button></div>
-              <div className="valuation"><div><span>매매가</span><strong>{p.price.toFixed(2)}억</strong></div><ArrowRightIcon /><div><span>추정 적정가</span><strong>{p.value.toFixed(2)}억</strong></div><div className="discount"><span>저평가율</span><strong>{p.discount}%</strong></div></div>
-              <div className="metrics"><div><span>대지 / 연면적</span><strong>{p.land}평 <i>/</i> {p.floor}평</strong></div><div><span>월 임대료</span><strong>{p.rent}만원</strong></div><div><span>NOI 수익률</span><strong className="positive">{p.noi}%</strong></div><div><span>필요 자기자본</span><strong>{p.equity.toFixed(2)}억</strong></div></div>
-              <div className="score"><div className={`grade grade-${p.grade}`}>{p.grade}</div><div className="score-info"><div><span>투자 Score</span><strong>{p.score}<small> / 100</small></strong></div><div className="bars">{p.bars.map((b,i) => <i key={i} style={{height: `${b}%`}} />)}</div></div></div>
-              <div className="card-actions"><button>상세 분석</button><button><ClipboardDocumentCheckIcon /> 임장 등록</button></div>
-            </article>)}
-            {shown.length === 0 && <div className="empty">검색 조건에 맞는 매물이 없습니다.</div>}
-          </section>
-
-          <section className="bottom-grid"><article className="insight"><div className="insight-icon"><SparklesIcon /></div><div><span>REALFINDER INSIGHT</span><h3>봉명동 근린생활시설, 지금 살펴볼 이유</h3><p>최근 3개월 내 인근 유사 매물 대비 평당가가 <b>약 18% 낮고</b>, 임대 정상화 시 연간 NOI가 1,260만원 증가할 가능성이 있어요.</p><button>분석 리포트 보기 <ArrowRightIcon /></button></div></article><article className="market"><div><h3>관심지역 시장동향</h3><button>최근 3개월 <ChevronDownIcon /></button></div><div className="market-stat"><span>대전 상업용 평균 수익률</span><strong>5.8%</strong><small>+0.3%p</small></div><div className="trend"><span style={{height:"35%"}}/><span style={{height:"46%"}}/><span style={{height:"41%"}}/><span style={{height:"55%"}}/><span style={{height:"52%"}}/><span style={{height:"69%"}}/><span style={{height:"77%"}}/><span style={{height:"72%"}}/></div></article></section>
-        </div>
-      </main>
-    </div>
-  );
+export default function App() {
+  const [page,setPage] = useState("대시보드");
+  const [items,setItems] = useState(seedProperties);
+  const [favorites,setFavorites] = useState<number[]>([2]);
+  const [selected,setSelected] = useState<Analysis | null>(null);
+  const [mobile,setMobile] = useState(false);
+  const navigate=(next:string)=>{setPage(next);setSelected(null);setMobile(false);};
+  const toggleFavorite=(id:number)=>setFavorites(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
+  return <div className="shell">
+    <aside className={mobile?"sidebar open":"sidebar"}>
+      <div className="logo"><b>R</b><div><strong>RealFinder</strong><span>부동산 투자 분석 시스템</span></div></div>
+      <p className="nav-title">MAIN MENU</p>
+      <nav>{menus.map((m,i)=><button key={m} className={page===m?"active":""} onClick={()=>navigate(m)}><i>{icons[i]}</i>{m}{m==="관심매물"&&<em>{favorites.length}</em>}</button>)}</nav>
+      <div className="side-foot"><small>분석 엔진 상태</small><strong><i/> 정상 작동 중</strong><span>마지막 업데이트 · 방금 전</span></div>
+    </aside>
+    <main>
+      <header><button className="hamburger" onClick={()=>setMobile(!mobile)}>☰</button><div className="crumb"><span>RealFinder</span><b>/</b><strong>{selected?"매물 상세분석":page}</strong></div><div className="header-right"><button className="notice">♧<i/></button><button className="primary" onClick={()=>navigate("매물등록")}>＋ 매물 등록</button><div className="user">김</div></div></header>
+      <div className="page">{selected?<Detail item={selected} onBack={()=>setSelected(null)}/>:page==="대시보드"?<Dashboard items={items} favorites={favorites} open={setSelected} toggle={toggleFavorite} navigate={navigate}/>:page==="매물검색"||page==="저평가 TOP"?<Search items={items} favorites={favorites} open={setSelected} toggle={toggleFavorite} top={page==="저평가 TOP"}/>:page==="지도검색"?<MapPage items={items} open={setSelected}/>:page==="관심매물"?<Search items={items.filter(x=>favorites.includes(x.id))} favorites={favorites} open={setSelected} toggle={toggleFavorite}/>:page==="매물등록"?<Register onAdd={(p)=>{setItems(v=>[analyzeProperty(p),...v]);navigate("매물검색");}}/>:page==="대출계산기"?<LoanCalculator/>:<Settings/>}</div>
+    </main>
+  </div>;
 }
+
+function Title({eyebrow,title,description,action}:{eyebrow?:string,title:string,description:string,action?:React.ReactNode}){return <div className="page-title"><div>{eyebrow&&<small>{eyebrow}</small>}<h1>{title}</h1><p>{description}</p></div>{action}</div>}
+function Dashboard({items,favorites,open,toggle,navigate}:{items:Analysis[],favorites:number[],open:(p:Analysis)=>void,toggle:(id:number)=>void,navigate:(s:string)=>void}){
+  const kpis=[["오늘 신규매물",items.filter(x=>x.status==="신규").length,"건","+12.5%","blue"],["저평가 후보",items.filter(x=>x.discountRate>=15).length,"건","할인율 15% 이상","green"],["가격하락 매물",items.filter(x=>x.status==="가격하락").length,"건","평균 8.3% 하락","orange"],["Score 80 이상",items.filter(x=>x.score>=80).length,"건","우선 검토 대상","purple"],["관심매물",favorites.length,"건","저장한 매물","red"]];
+  return <><Title eyebrow="INVESTMENT OVERVIEW" title="투자 대시보드" description="데이터가 선별한 오늘의 투자 기회를 확인하세요." action={<div className="date">2026. 09. 12 · 토요일</div>}/><section className="kpis">{kpis.map((k,i)=><article key={String(k[0])}><div className={`kicon ${k[4]}`}>{icons[i]}</div><span>{k[0]}</span><strong>{k[1]}<small>{k[2]}</small></strong><p>{k[3]}</p></article>)}</section><Section title="저평가 TOP 매물" sub="추정 적정가 대비 할인율이 높은 매물입니다." action={()=>navigate("저평가 TOP")}/><div className="cards">{[...items].sort((a,b)=>b.discountRate-a.discountRate).slice(0,3).map(p=><PropertyCard key={p.id} p={p} liked={favorites.includes(p.id)} open={open} toggle={toggle}/>)}</div><div className="dashboard-lists"><MiniList title="최근 가격하락 매물" items={items.filter(x=>x.status==="가격하락")} open={open}/><MiniList title="최근 등록매물" items={items.filter(x=>x.status==="신규")} open={open}/></div></>;
+}
+function Section({title,sub,action}:{title:string,sub:string,action:()=>void}){return <div className="section-title"><div><h2>{title}</h2><p>{sub}</p></div><button onClick={action}>전체보기 →</button></div>}
+function PropertyCard({p,liked,open,toggle}:{p:Analysis,liked:boolean,open:(p:Analysis)=>void,toggle:(id:number)=>void}){return <article className="property-card"><div className="card-head"><div><span className="area">{p.sido} · {p.sigungu}</span><span className={`status ${p.status}`}>{p.status}</span><h3>{p.dong} {p.type}</h3><p>⌖ {p.address}</p></div><button className={liked?"fav liked":"fav"} onClick={()=>toggle(p.id)}>{liked?"♥":"♡"}</button></div><div className="price-row"><div><span>매매가</span><strong>{formatEok(p.askingPrice)}</strong></div><i>→</i><div><span>추정 적정가</span><strong>{formatEok(p.estimatedValue)}</strong></div><div className="discount"><span>저평가율</span><b>{formatPercent(p.discountRate)}</b></div></div><div className="card-metrics"><div><span>대지 / 연면적</span><b>{p.landArea}평 / {p.grossArea}평</b></div><div><span>월 임대료</span><b>{formatMan(p.monthlyRent)}</b></div><div><span>NOI 수익률</span><b className="good">{formatPercent(p.noiYield)}</b></div><div><span>필요 자기자본</span><b>{formatEok(p.requiredEquity)}</b></div></div><div className="score-row"><b className={`grade g${p.grade}`}>{p.grade}</b><div><span>투자 Score</span><strong>{p.score}<small> / 100</small></strong><i><em style={{width:`${p.score}%`}}/></i></div></div><div className="card-buttons"><button onClick={()=>open(p)}>상세분석</button><button onClick={()=>toggle(p.id)}>{liked?"♥ 관심매물 저장됨":"♡ 관심매물"}</button></div></article>}
+function MiniList({title,items,open}:{title:string,items:Analysis[],open:(p:Analysis)=>void}){return <article className="mini-list"><h3>{title}<button>더보기</button></h3>{items.slice(0,3).map(p=><button className="mini-item" key={p.id} onClick={()=>open(p)}><b>{p.grade}</b><span><strong>{p.dong} {p.type}</strong><small>{formatEok(p.askingPrice)} · NOI {formatPercent(p.noiYield)}</small></span><em>{p.status==="가격하락"?`-${p.priceDrop}%`:`${formatPercent(p.discountRate)}`}</em></button>)}</article>}
+
+function Search({items,favorites,open,toggle,top=false}:{items:Analysis[],favorites:number[],open:(p:Analysis)=>void,toggle:(id:number)=>void,top?:boolean}){const [q,setQ]=useState("");const [type,setType]=useState("전체");const [sort,setSort]=useState(top?"저평가율 높은순":"투자점수 높은순");const result=useMemo(()=>items.filter(p=>(!q||p.address.includes(q))&&(type==="전체"||p.type===type)).sort((a,b)=>sort.includes("저평가")?b.discountRate-a.discountRate:sort.includes("수익률")?b.noiYield-a.noiYield:sort.includes("자본")?a.requiredEquity-b.requiredEquity:b.score-a.score),[items,q,type,sort]);return <><Title eyebrow="PROPERTY DISCOVERY" title={top?"저평가 TOP":"매물검색"} description="투자 조건에 맞는 매물을 정교하게 탐색하세요."/><div className="filter-panel"><div className="filter-main"><label>지역 검색<input value={q} onChange={e=>setQ(e.target.value)} placeholder="시·군·구 또는 동을 입력하세요"/></label><label>매물유형<select value={type} onChange={e=>setType(e.target.value)}><option>전체</option>{["꼬마빌딩","상가","상가주택","근린생활시설","공장","창고"].map(x=><option key={x}>{x}</option>)}</select></label><label>매매가격<div className="range"><input placeholder="최소 3억"/><span>—</span><input placeholder="최대 20억"/></div></label><button className="primary">⌕ 검색</button></div><details><summary>상세 필터 <span>대지면적 · 연면적 · 수익률 · 자기자본 · 투자점수 · 용도지역 · 공실률</span></summary><div className="advanced">{["대지면적","연면적","준공년도","보증금","월세","표면수익률","NOI 수익률","저평가율","필요 자기자본","투자점수","용도지역","공실률"].map(x=><label key={x}>{x}<input placeholder="제한 없음"/></label>)}</div></details></div><div className="result-bar"><p>검색결과 <b>{result.length}</b>건</p><select value={sort} onChange={e=>setSort(e.target.value)}>{["저평가율 높은순","투자점수 높은순","수익률 높은순","필요자본 낮은순","최근등록순","가격하락순"].map(x=><option key={x}>{x}</option>)}</select></div><div className="cards search-cards">{result.map(p=><PropertyCard key={p.id} p={p} liked={favorites.includes(p.id)} open={open} toggle={toggle}/>)}</div>{!result.length&&<div className="empty">조건에 맞는 매물이 없습니다.</div>}</>}
+
+function Detail({item:p,onBack}:{item:Analysis,onBack:()=>void}){return <><button className="back" onClick={onBack}>← 목록으로</button><Title eyebrow={`${p.sido} · ${p.sigungu}`} title={`${p.dong} ${p.type}`} description={p.address} action={<div className={`big-grade g${p.grade}`}><span>투자등급</span><b>{p.grade}</b><em>{p.score}점</em></div>}/><div className="hero-metrics">{[["매도호가",formatEok(p.askingPrice),""],["추정 적정가격",formatEok(p.estimatedValue),""],["저평가율",formatPercent(p.discountRate),"green"],["NOI",formatMan(p.noi),""],["필요 자기자본",formatEok(p.requiredEquity),"blue"],["Value-Up",`+${formatEok(p.valueUp)}`,"green"]].map(x=><article key={x[0]}><span>{x[0]}</span><strong className={x[2]}>{x[1]}</strong></article>)}</div><div className="detail-grid"><article className="panel"><h2>기본정보</h2><dl>{[["매물유형",p.type],["대지면적",formatPyeong(p.landArea)],["연면적",formatPyeong(p.grossArea)],["준공년도",`${p.builtYear}년`],["용도지역",p.zoning],["공실률",formatPercent(p.vacancyRate)]].map(x=><div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl></article><article className="panel"><h2>수익 분석</h2><dl>{[["보증금",formatEok(p.deposit)],["월 임대료",formatMan(p.monthlyRent)],["표면수익률",formatPercent(p.grossYield)],["NOI 수익률",formatPercent(p.noiYield)],["연간 NOI",formatMan(p.noi)],["Cash-on-Cash",formatPercent(p.cashOnCash)]].map(x=><div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl></article><article className="panel loan-panel"><h2>금융 분석</h2><div className="equity"><span>예상 필요 자기자본</span><strong>{formatEok(p.requiredEquity)}</strong></div><dl>{[["예상 감정가",formatEok(p.appraisalValue)],["LTV",formatPercent(p.ltv)],["예상 대출",formatEok(p.loanAmount)],["적용 금리",formatPercent(p.interestRate)],["연 Cash Flow",formatMan(p.cashFlow)],["DSCR",p.dscr.toFixed(2)]].map(x=><div key={x[0]}><dt>{x[0]}</dt><dd>{x[1]}</dd></div>)}</dl></article></div><article className="panel value-up"><div><small>VALUE-UP ANALYSIS</small><h2>임대 정상화 가능성</h2><p>현재 월세 {formatMan(p.monthlyRent)}에서 지역 정상 월세 {formatMan(p.normalRent)}로 개선할 경우</p></div><div><span>현재 수익가치</span><b>{formatEok(p.incomeValue)}</b></div><i>→</i><div><span>예상 가치 상승</span><b className="green">+{formatEok(p.valueUp)}</b></div></article></>}
+
+function MapPage({items,open}:{items:Analysis[],open:(p:Analysis)=>void}){const [current,setCurrent]=useState(items[0]);return <><Title eyebrow="MAP DISCOVERY" title="지도검색" description="지도를 이동하며 원하는 지역의 투자 기회를 발견하세요."/><div className="map-layout"><div className="map-list"><b>현재 영역 매물 {items.length}건</b>{items.map(p=><button className={current.id===p.id?"active":""} onClick={()=>setCurrent(p)} key={p.id}><i className={`g${p.grade}`}>{p.grade}</i><span><strong>{p.dong} {p.type}</strong><small>{formatEok(p.askingPrice)} · 저평가 {formatPercent(p.discountRate)}</small></span></button>)}</div><div className="map-canvas"><div className="roads r1"/><div className="roads r2"/><span className="river"/><small>대전광역시</small>{items.map((p,i)=><button key={p.id} onClick={()=>setCurrent(p)} className={`pin pin${i} ${current.id===p.id?"selected":""}`}><b>{p.grade}</b><span>{formatEok(p.askingPrice)}</span></button>)}<div className="map-popup"><b>{current.dong} {current.type}</b><span>저평가율 <strong>{formatPercent(current.discountRate)}</strong></span><span>필요자본 {formatEok(current.requiredEquity)}</span><button onClick={()=>open(current)}>상세분석 →</button></div></div></div></>}
+
+function Register({onAdd}:{onAdd:(p:Property)=>void}){const [done,setDone]=useState(false);function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const base=rawProperties[0];onAdd({...base,id:Date.now(),address:String(f.get("address")),dong:String(f.get("dong")),type:String(f.get("type")) as PropertyType,askingPrice:Number(f.get("price"))*100000000,landArea:Number(f.get("land")),grossArea:Number(f.get("gross")),deposit:Number(f.get("deposit"))*10000,monthlyRent:Number(f.get("rent"))*10000,status:"신규"});setDone(true)}return <><Title eyebrow="MANUAL LISTING" title="매물 직접등록" description="기본 정보를 입력하면 핵심 투자 지표를 자동으로 계산합니다."/><form className="register-form" onSubmit={submit}><div className="form-section"><h2>01. 매물 기본정보</h2><div className="form-grid"><label className="wide">주소<input required name="address" placeholder="예: 대전 유성구 봉명동 120-8"/></label><label>동<input required name="dong" placeholder="봉명동"/></label><label>매물유형<select name="type">{["꼬마빌딩","상가","상가주택","근린생활시설","공장","창고"].map(x=><option key={x}>{x}</option>)}</select></label><label>매매가 (억원)<input required name="price" type="number" step=".1" defaultValue="7.2"/></label><label>대지면적 (평)<input required name="land" type="number" defaultValue="75"/></label><label>연면적 (평)<input required name="gross" type="number" defaultValue="130"/></label></div></div><div className="form-section"><h2>02. 임대 현황</h2><div className="form-grid"><label>보증금 (만원)<input required name="deposit" type="number" defaultValue="5000"/></label><label>월 임대료 (만원)<input required name="rent" type="number" defaultValue="480"/></label><label>공실률 (%)<input type="number" defaultValue="5"/></label></div></div><div className="form-help"><b>자동 분석 항목</b><span>저평가율 · NOI · 예상대출 · 필요 자기자본 · Cash-on-Cash · DSCR · Value-Up · 투자점수</span></div><button className="primary submit" type="submit">매물 저장하고 분석하기 →</button>{done&&<p className="success">매물이 정상적으로 등록되었습니다.</p>}</form></>}
+
+function LoanCalculator(){const [price,setPrice]=useState(7.2),[appraisal,setAppraisal]=useState(9),[ltv,setLtv]=useState(65),[rate,setRate]=useState(4.2),[deposit,setDeposit]=useState(.5),[cost,setCost]=useState(.45);const loan=appraisal*ltv/100,equity=price+cost-loan-deposit,interest=loan*rate/100;return <><Title eyebrow="FINANCE SIMULATOR" title="대출계산기" description="대출 조건을 조정해 실제 필요자본과 금융비용을 확인하세요."/><div className="calculator"><article className="calc-input"><h2>대출 조건</h2>{[["매매가격",price,setPrice,"억원"],["예상 감정가",appraisal,setAppraisal,"억원"],["LTV",ltv,setLtv,"%"],["금리",rate,setRate,"%"],["승계 보증금",deposit,setDeposit,"억원"],["취득·수선비",cost,setCost,"억원"]].map(([l,v,s,u]:any)=><label key={l}><span>{l}</span><div><input type="number" step="0.1" value={v} onChange={e=>s(Number(e.target.value))}/><b>{u}</b></div></label>)}</article><article className="calc-result"><small>SIMULATION RESULT</small><span>예상 필요 자기자본</span><strong>{equity.toFixed(2)}억원</strong><div><p><span>예상 대출금</span><b>{loan.toFixed(2)}억원</b></p><p><span>연간 이자</span><b>{interest.toFixed(2)}억원</b></p><p><span>월 이자</span><b>{formatMan(interest*100000000/12)}</b></p></div><em>본 계산은 입력 조건에 따른 예상치이며 실제 금융기관의 심사 결과와 다를 수 있습니다.</em></article></div></>}
+function Settings(){return <><Title eyebrow="PREFERENCES" title="설정" description="분석과 알림에 사용할 기본 조건을 관리하세요."/><article className="panel settings"><h2>기본 투자 조건</h2><label>기본 관심지역<select><option>대전 · 세종</option></select></label><label>기본 LTV<input defaultValue="65%"/></label><label>기본 대출금리<input defaultValue="4.2%"/></label><button className="primary">설정 저장</button></article></>}
